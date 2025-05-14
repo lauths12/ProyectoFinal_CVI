@@ -16,7 +16,7 @@ Este proyecto Fue desarrollado como una forma de integrar y aplicar conceptos cl
 
 ### 🧱 Generación del Laberinto
 
-* Se implementó un generador procedural de laberintos basado en el **algoritmo de Prim**, que garantiza caminos únicos sin ciclos.
+* Se implementó un generador automatico de laberintos basado en el **algoritmo de Prim**, que garantiza caminos únicos sin ciclos.
 * Se adaptó la función `CreateSceneObjects` para instanciar correctamente muros y pasillos de acuerdo al laberinto generado.
 
 ![image](https://github.com/user-attachments/assets/1a62e8b2-4a04-4d01-b44e-36dc1a32467e)
