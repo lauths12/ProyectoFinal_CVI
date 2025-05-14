@@ -78,5 +78,3 @@ Este proyecto Fue desarrollado como una forma de integrar y aplicar conceptos cl
 * 🎥 [Entrega 2 - Iluminación y Linterna](https://youtu.be/JdZTg8ME6Pg)
 
 ---
-
-¿Quieres que lo exporte como archivo `.md` o te gustaría añadir capturas de pantalla?
