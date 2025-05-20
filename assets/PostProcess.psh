@@ -49,7 +49,7 @@ float4 main(in PSInput PSIn) : SV_Target
 
     switch (g_Constants.DrawMode)
     {
-        case RENDER_MODE_SHADED:           return lerp(Color * RTColor.a, RTColor, R);
+        case RENDER_MODE_SHADED:           return Color * RTColor.a;
         case RENDER_MODE_G_BUFFER_COLOR:   return Color;
         case RENDER_MODE_G_BUFFER_NORMAL:  return float4(abs(Normal.xyz), 1.0);
         case RENDER_MODE_DIFFUSE_LIGHTING: return Color * RTColor.a;

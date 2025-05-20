@@ -246,6 +246,7 @@ END_SHADER_DECLARATION(CSMain, 8, 8)
                            g_TLAS);
     }
 
+ 
     float4 Color = float4(0.0, 0.0, 0.0, g_Constants.AmbientLight + NdotL);
 
     ReflectionInputAttribs Attribs = {
@@ -265,6 +266,7 @@ END_SHADER_DECLARATION(CSMain, 8, 8)
     else
         Color.rgb = GetSkyColor(Attribs.ReflectionRayDir, LightDir).rgb;
 
+    // Procesamiento de la linterna
     float3 flashlightColor = float3(1.0, 0.9, 0.8);
     float3 toFragment = WPos - g_Constants.FlashlightPos.xyz;
     float distanceToLight = length(toFragment);
@@ -303,5 +305,6 @@ END_SHADER_DECLARATION(CSMain, 8, 8)
     }
 
     Color.a = saturate(Color.a);
+    
     TextureStore(g_RayTracedTex, DTid, Color);
 }

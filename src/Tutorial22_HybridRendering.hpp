@@ -90,12 +90,14 @@ private:
     void CreateScene();
     void CreateSceneMaterials(uint2& CubeMaterialRange, Uint32& GroundMaterial, std::vector<HLSL::MaterialAttribs>& Materials);
     void CreateSceneObjects(uint2 CubeMaterialRange, Uint32 GroundMaterial);
+    void HandleCollisions(float3& CameraPos, float CamRadius);
     void CreateSceneAccelStructs();
     void UpdateTLAS();
     void CreateRasterizationPSO(IShaderSourceInputStreamFactory* pShaderSourceFactory);
     void CreatePostProcessPSO(IShaderSourceInputStreamFactory* pShaderSourceFactory);
     void CreateRayTracingPSO(IShaderSourceInputStreamFactory* pShaderSourceFactory);
     bool m_FlashlightEnabled = true;
+
 
     // Pipeline resource signature for scene resources used by the ray-tracing PSO
     RefCntAutoPtr<IPipelineResourceSignature> m_pRayTracingSceneResourcesSign;
