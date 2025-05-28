@@ -59,11 +59,13 @@ Este proyecto Fue desarrollado como una forma de integrar y aplicar conceptos cl
 * Calcula sombras suaves y atenuación con base en la distancia y obstáculos.
 * Se aplica iluminación difusa cálida y reflejos suaves.
 
-### 👾 Entidad del Backroom
-![image](https://github.com/user-attachments/assets/0a60db06-3d49-4da7-a6ab-0b68e0fede6c)
+### 👾 Entrega Final
 
-* Se diseñó un modelo de criatura en **Blender** que será usado como amenaza en el juego.
-* Aún en proceso de integración.
+
+https://github.com/user-attachments/assets/45d3e372-b663-4148-8c06-9f926a39296f
+
+
+
 
 ### 📚 Referencias
 
