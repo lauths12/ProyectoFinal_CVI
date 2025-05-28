@@ -61,10 +61,7 @@ Este proyecto Fue desarrollado como una forma de integrar y aplicar conceptos cl
 
 ### 👾 Entrega Final
 
-
 https://github.com/user-attachments/assets/45d3e372-b663-4148-8c06-9f926a39296f
-
-
 
 
 ### 📚 Referencias
