@@ -91,12 +91,25 @@ private:
     void CreateSceneMaterials(uint2& CubeMaterialRange, Uint32& GroundMaterial, std::vector<HLSL::MaterialAttribs>& Materials);
     void CreateSceneObjects(uint2 CubeMaterialRange, Uint32 GroundMaterial);
     void HandleCollisions(float3& CameraPos, float CamRadius);
+    void HandleKeyCollection(const float3& camPos, float camRadius);
+    void TryOpenDoors();
     void CreateSceneAccelStructs();
     void UpdateTLAS();
     void CreateRasterizationPSO(IShaderSourceInputStreamFactory* pShaderSourceFactory);
     void CreatePostProcessPSO(IShaderSourceInputStreamFactory* pShaderSourceFactory);
     void CreateRayTracingPSO(IShaderSourceInputStreamFactory* pShaderSourceFactory);
     bool m_FlashlightEnabled = true;
+    int  m_nextDoorId        = 0;
+    int   m_Health              = 100;
+    float m_DamageCooldown      = 0.5f; 
+    float m_TimeSinceLastDamage = 0.0f;
+    float m_DamageEffectTimer   = 0.0f; 
+    bool  m_IsGameOver          = false;
+    float m_PostDamageOverlayAlpha    = 0.0f; 
+    float m_PostDamageOverlayTimer    = 0.0f; 
+    float m_PostDamageOverlayDuration = 1.5f;
+    bool  m_ShowStartScreen           = true;
+    bool  m_ShowControlsScreen        = false;
 
 
     // Pipeline resource signature for scene resources used by the ray-tracing PSO

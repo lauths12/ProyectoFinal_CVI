@@ -20,6 +20,8 @@ struct GlobalConstants
     float    DrawMode;
     float    MaxRayLength;
     float    AmbientLight;
+    uint     Active;  
+    uint     _pad[3]; 
     float    _Padding[2];    // Para completar 16 bytes
 };
 
@@ -61,6 +63,7 @@ struct MaterialAttribs
     uint   padding0;
     uint   padding1;
 };
+
 
 // Small offset between ray intersection and new ray origin to avoid self-intersections.
 #define SMALL_OFFSET 0.0001

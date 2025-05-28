@@ -1,4 +1,4 @@
-/*
+﻿/*
  *  Copyright 2019-2024 Diligent Graphics LLC
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,6 +54,45 @@ struct AABB
 
 std::vector<AABB> MazeWalls;
 
+struct Key
+{
+    float3           Min;
+    float3           Max;
+    bool             Collected = false;
+    int              ObjectIdx = -1; 
+    int              WallIdx   = -1; 
+    std::vector<int> DoorIds;
+};
+
+std::vector<Key> m_Keys;
+int              m_KeysCollected = 0;
+
+struct Door
+{
+    int      WallIdx;
+    int      ObjectIdx;
+    bool     Opened    = false;
+    bool     Rising    = false;
+    float    RiseTimer = 0.0f; 
+    float    RiseSpeed = 2.0f; 
+    float4x4 OriginalMat;      
+    int      Id;              
+    int      BlockType;
+};
+std::vector<Door> m_Doors;
+
+bool  m_ShowUnlockMsg  = false;
+float m_UnlockMsgTimer = 0.0f;
+float m_UnlockMsgTime  = 3.0f; 
+
+struct KeyDoorBinding
+{
+    int KeyBlockType;
+    int DoorBlockType;
+};
+
+std::vector<KeyDoorBinding> m_KeyDoorBindings;
+
 
 void Tutorial22_HybridRendering::CreateSceneMaterials(uint2& CubeMaterialRange, Uint32& GroundMaterial, std::vector<HLSL::MaterialAttribs>& Materials)
 {
@@ -103,9 +142,31 @@ void Tutorial22_HybridRendering::CreateSceneMaterials(uint2& CubeMaterialRange, 
     CubeMaterialRange.x = static_cast<Uint32>(Materials.size());
     LoadMaterial("DGLogo0.png", float4{1.f}, AnisotropicClampSampInd);
     LoadMaterial("DGLogo1.png", float4{1.f}, AnisotropicClampSampInd);
-    LoadMaterial("DGLogo2.png", float4{1.f}, AnisotropicClampSampInd);
-    LoadMaterial("DGLogo3.png", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("payaso.png", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("bichoraro.png", float4{1.f}, AnisotropicClampSampInd);
     LoadMaterial("DGLogo4.png", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("ExitHell.jpg", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("ExitHell1.jpg", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("ExitHell2.jpg", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("Techo.jpg", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("DGLogo4.png", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("DGLogo4.png", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("DGLogo4.png", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("DGLogo4.png", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("DGLogo4.png", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("DGLogo4.png", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("DGLogo4.png", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("DGLogo4.png", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("DGLogo5.jpeg", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("payaso2.png", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("key.jpg", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("key.jpg", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("key.jpg", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("key.jpg", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("key.jpg", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("key.jpg", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("key.jpg", float4{1.f}, AnisotropicClampSampInd);
+    LoadMaterial("key.jpg", float4{1.f}, AnisotropicClampSampInd);
 
     CubeMaterialRange.y = static_cast<Uint32>(Materials.size());
 
@@ -259,59 +320,68 @@ void Tutorial22_HybridRendering::CreateSceneObjects(const uint2 CubeMaterialRang
     const int mazeCols = 100;
 
     int maze[mazeRows][mazeCols] = {
-        {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+        {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 19, 1, 1, 1, 1, 1, 1, 1, 1, 1, 19, 1, 1, 1, 1},
         {1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
         {1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 3, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 3, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 19},
         {1, 3, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 3, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
         {1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
         {1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 3, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 3, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 3, 0, 0, 1, 1, 0, 4, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 3, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 3, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 3, 0, 0, 1, 1, 0, 24, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
         {1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
         {1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 3, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 3, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 19},
         {1, 3, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
         {1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-        {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 5, 5, 5, 1, 5, 5, 5, 1, 5, 5, 5, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1},
+        {1, 3, 3, 3, 3, 3, 14, 14, 14, 14, 14, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 15, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 12, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 13, 13, 13, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+        {1, 0, 0, 0, 0, 1, 0, 0, 25, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 5, 5, 5, 1, 13, 13, 13, 1, 5, 5, 5, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1},
         {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1},
         {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1},
         {1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1},
         {1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1},
         {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1},
-        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1},
+        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1},
         {1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1},
         {1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1},
         {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1},
         {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1},
         {1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 5, 5, 5, 5, 5, 5, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 7, 6, 8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
         {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1},
         {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
         {1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
         {1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1},
         {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1},
         {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1},
-        {1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1},
-        {1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1},
-        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1},
-        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1},
-        {1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1},
-        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 4, 2, 2, 1, 0, 0, 0, 0, 1, 2, 2, 4, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1},
-        {1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1},
+        {1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 3, 1, 3, 1, 3, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1},
+        {1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1},
+        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1},
+        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 27, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 4, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1},
+        {1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1},
+        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 4, 1, 2, 1, 10, 10, 10, 10, 1, 2, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 17, 17, 17, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1},
+        {1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 20, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1},
         {1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1},
-        {1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 26, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
         {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}};
 
     std::vector<std::vector<bool>> visited(mazeRows, std::vector<bool>(mazeCols, false));
+    m_KeyDoorBindings.push_back({20, 10});
+    m_KeyDoorBindings.push_back({21, 11});
+    m_KeyDoorBindings.push_back({22, 12});
+    m_KeyDoorBindings.push_back({23, 13});
+    m_KeyDoorBindings.push_back({24, 14});
+    m_KeyDoorBindings.push_back({25, 15});
+    m_KeyDoorBindings.push_back({26, 16});
+    m_KeyDoorBindings.push_back({27, 17});
 
+    // PASADA 1: Muros, puertas y bloques especiales
     for (int z = 0; z < mazeRows; ++z)
     {
         for (int x = 0; x < mazeCols; ++x)
@@ -320,64 +390,226 @@ void Tutorial22_HybridRendering::CreateSceneObjects(const uint2 CubeMaterialRang
             {
                 int blockType = maze[z][x];
 
-                int runX = 1;
-                while (x + runX < mazeCols && maze[z][x + runX] == blockType && !visited[z][x + runX])
-                    runX++;
-
-                int runZ = 1;
-                while (z + runZ < mazeRows && maze[z + runZ][x] == blockType && !visited[z + runZ][x])
-                    runZ++;
-
-                bool horizontal = runX >= runZ;
-                int  runLength  = horizontal ? runX : runZ;
-
-                for (int i = 0; i < runLength; ++i)
+                if (blockType == 1)
                 {
+                    visited[z][x] = true;
+                    float spacing = 2.0f;
+                    float scaleY  = 3.0f;
+                    float posY    = scaleY - 0.2f;
+                    float scaleX  = spacing * 0.5f;
+                    float scaleZ  = spacing * 0.5f;
+                    float posX    = (x - mazeCols / 2.0f) * spacing;
+                    float posZ    = (z - mazeRows / 2.0f) * spacing;
+
+                    int materialOffset = CubeMaterialRange.x + (blockType - 1);
+
+                    HLSL::ObjectAttribs obj;
+                    obj.ModelMat = (float4x4::Scale(scaleX, scaleY, scaleZ) *
+                                    float4x4::Translation(posX, posY, posZ))
+                                       .Transpose();
+                    obj.NormalMat   = obj.ModelMat;
+                    obj.MaterialId  = materialOffset;
+                    obj.MeshId      = CubeMeshId;
+                    obj.FirstIndex  = m_Scene.Meshes[obj.MeshId].FirstIndex;
+                    obj.FirstVertex = m_Scene.Meshes[obj.MeshId].FirstVertex;
+                    m_Scene.Objects.push_back(obj);
+
+                    float3 wallMin = {posX - scaleX, 0.0f, posZ - scaleZ};
+                    float3 wallMax = {posX + scaleX, scaleY, posZ + scaleZ};
+                    MazeWalls.push_back({wallMin, wallMax});
+                }
+                else if (blockType >= 10 && blockType <= 17) // puerta
+                {
+                    int runX = 1;
+                    while (x + runX < mazeCols && maze[z][x + runX] == blockType && !visited[z][x + runX])
+                        runX++;
+                    int runZ = 1;
+                    while (z + runZ < mazeRows && maze[z + runZ][x] == blockType && !visited[z + runZ][x])
+                        runZ++;
+
+                    bool horizontal = runX >= runZ;
+                    int  runLength  = horizontal ? runX : runZ;
+
+                    for (int i = 0; i < runLength; ++i)
+                    {
+                        if (horizontal)
+                            visited[z][x + i] = true;
+                        else
+                            visited[z + i][x] = true;
+                    }
+
+                    float spacing = 2.0f;
+                    float scaleY  = 3.0f;
+                    float posY    = scaleY - 0.2f;
+                    float posX, posZ, scaleX, scaleZ;
+
                     if (horizontal)
-                        visited[z][x + i] = true;
+                    {
+                        scaleX = spacing * runLength * 0.5f;
+                        scaleZ = spacing * 0.5f;
+                        posX   = (x + (runLength - 1) * 0.5f - mazeCols / 2.0f) * spacing;
+                        posZ   = (z - mazeRows / 2.0f) * spacing;
+                    }
                     else
-                        visited[z + i][x] = true;
+                    {
+                        scaleX = spacing * 0.5f;
+                        scaleZ = spacing * runLength * 0.5f;
+                        posX   = (x - mazeCols / 2.0f) * spacing;
+                        posZ   = (z + (runLength - 1) * 0.5f - mazeRows / 2.0f) * spacing;
+                    }
+
+                    int materialOffset = CubeMaterialRange.x + (blockType - 1);
+
+                    HLSL::ObjectAttribs obj;
+                    obj.ModelMat = (float4x4::Scale(scaleX, scaleY, scaleZ) *
+                                    float4x4::Translation(posX, posY, posZ))
+                                       .Transpose();
+                    obj.NormalMat   = obj.ModelMat;
+                    obj.MaterialId  = materialOffset;
+                    obj.MeshId      = CubeMeshId;
+                    obj.FirstIndex  = m_Scene.Meshes[obj.MeshId].FirstIndex;
+                    obj.FirstVertex = m_Scene.Meshes[obj.MeshId].FirstVertex;
+
+                    int objIdx = static_cast<int>(m_Scene.Objects.size());
+                    m_Scene.Objects.push_back(obj);
+
+                    float3 wallMin = {posX - scaleX, 0.0f, posZ - scaleZ};
+                    float3 wallMax = {posX + scaleX, scaleY, posZ + scaleZ};
+                    int    wallIdx = static_cast<int>(MazeWalls.size());
+                    MazeWalls.push_back({wallMin, wallMax});
+
+                    Door door;
+                    door.WallIdx     = wallIdx;
+                    door.ObjectIdx   = objIdx;
+                    door.Opened      = false;
+                    door.Rising      = false;
+                    door.RiseTimer   = 0.0f;
+                    door.OriginalMat = {};
+                    door.Id          = m_nextDoorId++;
+                    m_Doors.push_back(door);
                 }
-
-                float spacing = 2.0f;
-                float scaleY  = 3.0f;
-                float posY    = scaleY - 0.2f;
-                float posX, posZ, scaleX, scaleZ;
-
-                if (horizontal)
+                else if (blockType >= 2 && blockType <= 9 || blockType == 19)
                 {
-                    scaleX = spacing * runLength * 0.5f;
-                    scaleZ = spacing * 0.5f;
-                    posX   = (x + (runLength - 1) / 2.0f - mazeCols / 2.0f) * spacing;
-                    posZ   = (z - mazeRows / 2.0f) * spacing;
+                    int runX = 1;
+                    while (x + runX < mazeCols && maze[z][x + runX] == blockType && !visited[z][x + runX])
+                        runX++;
+
+                    int runZ = 1;
+                    while (z + runZ < mazeRows && maze[z + runZ][x] == blockType && !visited[z + runZ][x])
+                        runZ++;
+
+                    bool horizontal = runX >= runZ;
+                    int  runLength  = horizontal ? runX : runZ;
+
+                    for (int i = 0; i < runLength; ++i)
+                    {
+                        if (horizontal)
+                            visited[z][x + i] = true;
+                        else
+                            visited[z + i][x] = true;
+                    }
+
+                    float spacing = 2.0f;
+                    float scaleY  = 3.0f;
+                    float posY    = scaleY - 0.2f;
+
+                    float posX, posZ, scaleX, scaleZ;
+
+                    if (horizontal)
+                    {
+                        scaleX = spacing * runLength * 0.5f;
+                        scaleZ = spacing * 0.5f;
+                        posX   = (x + (runLength - 1) / 2.0f - mazeCols / 2.0f) * spacing;
+                        posZ   = (z - mazeRows / 2.0f) * spacing;
+                    }
+                    else
+                    {
+                        scaleX = spacing * 0.5f;
+                        scaleZ = spacing * runLength * 0.5f;
+                        posX   = (x - mazeCols / 2.0f) * spacing;
+                        posZ   = (z + (runLength - 1) / 2.0f - mazeRows / 2.0f) * spacing;
+                    }
+
+                    int materialOffset = CubeMaterialRange.x + (blockType - 1);
+
+                    HLSL::ObjectAttribs obj;
+                    obj.ModelMat = (float4x4::Scale(scaleX, scaleY, scaleZ) *
+                                    float4x4::Translation(posX, posY, posZ))
+                                       .Transpose();
+                    obj.NormalMat   = obj.ModelMat;
+                    obj.MaterialId  = materialOffset;
+                    obj.MeshId      = CubeMeshId;
+                    obj.FirstIndex  = m_Scene.Meshes[obj.MeshId].FirstIndex;
+                    obj.FirstVertex = m_Scene.Meshes[obj.MeshId].FirstVertex;
+                    m_Scene.Objects.push_back(obj);
+
+                    float3 wallMin = {posX - scaleX, 0.0f, posZ - scaleZ};
+                    float3 wallMax = {posX + scaleX, scaleY, posZ + scaleZ};
+                    MazeWalls.push_back({wallMin, wallMax});
                 }
-                else
-                {
-                    scaleX = spacing * 0.5f;
-                    scaleZ = spacing * runLength * 0.5f;
-                    posX   = (x - mazeCols / 2.0f) * spacing;
-                    posZ   = (z + (runLength - 1) / 2.0f - mazeRows / 2.0f) * spacing;
-                }
-
-                int materialOffset = CubeMaterialRange.x + (blockType - 1);
-
-                HLSL::ObjectAttribs obj;
-                obj.ModelMat = (float4x4::Scale(scaleX, scaleY, scaleZ) *
-                                float4x4::Translation(posX, posY, posZ))
-                                   .Transpose();
-                obj.NormalMat   = obj.ModelMat;
-                obj.MaterialId  = materialOffset;
-                obj.MeshId      = CubeMeshId;
-                obj.FirstIndex  = m_Scene.Meshes[obj.MeshId].FirstIndex;
-                obj.FirstVertex = m_Scene.Meshes[obj.MeshId].FirstVertex;
-                m_Scene.Objects.push_back(obj);
-
-                float3 wallMin = {posX - scaleX, 0.0f, posZ - scaleZ};
-                float3 wallMax = {posX + scaleX, scaleY, posZ + scaleZ};
-                MazeWalls.push_back({wallMin, wallMax});
             }
         }
     }
+
+    // PASADA 2: Llaves
+    for (int z = 0; z < mazeRows; ++z)
+    {
+        for (int x = 0; x < mazeCols; ++x)
+        {
+            int blockType = maze[z][x];
+            if (blockType >= 20 && blockType <= 27 && !visited[z][x])
+            {
+                visited[z][x] = true;
+
+                float spacing = 2.0f;
+                float size    = 0.5f;
+                float posX    = (x - mazeCols / 2.0f) * spacing;
+                float posY    = size + 2.0f;
+                float posZ    = (z - mazeRows / 2.0f) * spacing;
+
+                HLSL::ObjectAttribs keyObj;
+                keyObj.ModelMat = (float4x4::Scale(size, size, size) *
+                                   float4x4::Translation(posX, posY, posZ))
+                                      .Transpose();
+                keyObj.NormalMat   = keyObj.ModelMat;
+                keyObj.MaterialId  = CubeMaterialRange.x + (blockType - 1);
+                keyObj.MeshId      = CubeMeshId;
+                keyObj.FirstIndex  = m_Scene.Meshes[keyObj.MeshId].FirstIndex;
+                keyObj.FirstVertex = m_Scene.Meshes[keyObj.MeshId].FirstVertex;
+
+                int objIdx = static_cast<int>(m_Scene.Objects.size());
+                m_Scene.Objects.push_back(keyObj);
+
+                Key newKey;
+                newKey.Min       = {posX - size, posY - size, posZ - size};
+                newKey.Max       = {posX + size, posY + size, posZ + size};
+                newKey.ObjectIdx = objIdx;
+
+                int doorType = -1;
+                for (const auto& binding : m_KeyDoorBindings)
+                {
+                    if (binding.KeyBlockType == blockType)
+                    {
+                        doorType = binding.DoorBlockType;
+                        break;
+                    }
+                }
+
+                for (const Door& door : m_Doors)
+                {
+                    const HLSL::ObjectAttribs& doorObj = m_Scene.Objects[door.ObjectIdx];
+                    if (doorObj.MaterialId == CubeMaterialRange.x + (doorType - 1))
+                    {
+                        newKey.DoorIds.push_back(door.Id);
+                    }
+                }
+
+
+                m_Keys.push_back(newKey);
+            }
+        }
+    }
+
 
     // Crear instancia para todos los cubos del laberinto
     InstancedObjects InstObj;
@@ -385,6 +617,7 @@ void Tutorial22_HybridRendering::CreateSceneObjects(const uint2 CubeMaterialRang
     InstObj.NumObjects          = static_cast<Uint32>(m_Scene.Objects.size());
     InstObj.ObjectAttribsOffset = 0;
     m_Scene.ObjectInstances.push_back(InstObj);
+
 
     // Crear plano del suelo
     InstObj.ObjectAttribsOffset = static_cast<Uint32>(m_Scene.Objects.size());
@@ -403,47 +636,153 @@ void Tutorial22_HybridRendering::CreateSceneObjects(const uint2 CubeMaterialRang
     m_Scene.ObjectInstances.push_back(InstObj);
 
     // Crear techo
-    InstObj.ObjectAttribsOffset = static_cast<Uint32>(m_Scene.Objects.size());
-    InstObj.MeshInd             = CubeMeshId; 
+    InstancedObjects ceilingInst;
+    ceilingInst.MeshInd             = CubeMeshId;
+    ceilingInst.ObjectAttribsOffset = static_cast<Uint32>(m_Scene.Objects.size());
+
     {
         HLSL::ObjectAttribs obj;
-        float ceilingHeight = 3.0f * 2.0f;
-        obj.ModelMat = (float4x4::Scale(100.f, 0.1f, 50.f) * float4x4::Translation(0.f, ceilingHeight, 0.f)).Transpose();
-        obj.NormalMat = float3x3::Identity();
-        obj.MaterialId = GroundMaterial;
 
+        float spacing       = 2.0f;
+        float mazeWidth     = mazeCols * spacing;
+        float mazeDepth     = mazeRows * spacing;
+        float thickness     = 0.5f;
+        float ceilingHeight = 6.0f;
+
+        float scaleX = mazeWidth * 0.5f;
+        float scaleY = thickness;
+        float scaleZ = mazeDepth * 0.5f;
+
+        float posX = 0.0f;
+        float posY = ceilingHeight + scaleY * 0.5f;
+        float posZ = 0.0f;
+
+        obj.ModelMat = (float4x4::Scale(scaleX, scaleY, scaleZ) *
+                        float4x4::Translation(posX, posY, posZ))
+                           .Transpose();
+
+        obj.NormalMat   = obj.ModelMat;
+        obj.MaterialId  = CubeMaterialRange.x + 8;
         obj.MeshId      = CubeMeshId;
         obj.FirstIndex  = m_Scene.Meshes[obj.MeshId].FirstIndex;
         obj.FirstVertex = m_Scene.Meshes[obj.MeshId].FirstVertex;
+
         m_Scene.Objects.push_back(obj);
     }
-    InstObj.NumObjects = static_cast<Uint32>(m_Scene.Objects.size()) - InstObj.ObjectAttribsOffset;
-    m_Scene.ObjectInstances.push_back(InstObj);
+
+    ceilingInst.NumObjects = static_cast<Uint32>(m_Scene.Objects.size()) - ceilingInst.ObjectAttribsOffset;
+    m_Scene.ObjectInstances.push_back(ceilingInst);
+
+
+    // Crear instancia para el monstruo
+    InstancedObjects monsterInst;
+    monsterInst.MeshInd             = CubeMeshId;
+    monsterInst.ObjectAttribsOffset = static_cast<Uint32>(m_Scene.Objects.size());
+
+    {
+        HLSL::ObjectAttribs obj;
+        float3              startPos     = float3{0.f, 3.f, -20.f};
+        float               monsterScale = 0.01f;
+
+        obj.ModelMat = (float4x4::Scale(0.01f, monsterScale, monsterScale) *
+                        float4x4::Translation(startPos))
+                           .Transpose();
+        obj.NormalMat   = float3x3::Identity();
+        obj.MaterialId  = CubeMaterialRange.x + 17;
+        obj.MeshId      = CubeMeshId;
+        obj.FirstIndex  = m_Scene.Meshes[obj.MeshId].FirstIndex;
+        obj.FirstVertex = m_Scene.Meshes[obj.MeshId].FirstVertex;
+
+        Uint32 monsterIndex = static_cast<Uint32>(m_Scene.Objects.size());
+        m_Scene.Objects.push_back(obj);
+
+        //  dinámico para poder moverlo
+        m_Scene.DynamicObjects.push_back({monsterIndex});
+    }
+    monsterInst.NumObjects = 1;
+    m_Scene.ObjectInstances.push_back(monsterInst);
 }
 
 void Tutorial22_HybridRendering::HandleCollisions(float3& CameraPos, float CamRadius)
 {
     for (const auto& wall : MazeWalls)
     {
-        // 1. Encontrar el punto m�s cercano en el muro a la c�mara
         float3 closestPoint;
         closestPoint.x = std::max(wall.min.x, std::min(CameraPos.x, wall.max.x));
         closestPoint.y = std::max(wall.min.y, std::min(CameraPos.y, wall.max.y));
         closestPoint.z = std::max(wall.min.z, std::min(CameraPos.z, wall.max.z));
 
-        // 2. Calcular vector de penetraci�n
         float3 delta    = CameraPos - closestPoint;
         float  distance = length(delta);
 
         if (distance < CamRadius)
         {
-            // 3. Calcular direcci�n y profundidad de penetraci�n
             float3 collisionNormal  = delta / distance;
             float  penetrationDepth = CamRadius - distance;
 
-
-            CameraPos += collisionNormal * penetrationDepth * 1.1f; 
+            CameraPos += collisionNormal * penetrationDepth * 1.1f;
         }
+    }
+}
+
+void Tutorial22_HybridRendering::HandleKeyCollection(const float3& camPos, float camRadius)
+{
+    for (auto& key : m_Keys)
+    {
+        if (key.Collected) continue;
+
+        float3 closest;
+        closest.x = std::max(key.Min.x, std::min(camPos.x, key.Max.x));
+        closest.y = std::max(key.Min.y, std::min(camPos.y, key.Max.y));
+        closest.z = std::max(key.Min.z, std::min(camPos.z, key.Max.z));
+
+        float3 delta = camPos - closest;
+        float  dist  = length(delta);
+
+        if (dist < camRadius)
+        {
+            key.Collected    = true;
+            m_ShowUnlockMsg  = true;
+            m_UnlockMsgTimer = 0.0f;
+
+            for (int doorId : key.DoorIds)
+            {
+                for (auto& door : m_Doors)
+                {
+                    if (door.Id == doorId && !door.Opened)
+                    {
+                        door.Opened      = true;
+                        door.Rising      = true;
+                        door.RiseTimer   = 0.0f;
+                        door.OriginalMat = m_Scene.Objects[door.ObjectIdx].ModelMat;
+                        break;
+                    }
+                }
+            }
+
+            auto& obj    = m_Scene.Objects[key.ObjectIdx];
+            obj.ModelMat = float4x4::Scale(0.0f, 0.0f, 0.0f).Transpose();
+        }
+    }
+}
+
+
+void Tutorial22_HybridRendering::TryOpenDoors()
+{
+    if (m_KeysCollected > 0)
+    {
+        for (auto& door : m_Doors)
+        {
+            if (!door.Opened)
+            {
+                door.Opened    = true;
+                door.Rising    = true;
+                door.RiseTimer = 0.0f;
+                // Guardar la mat original:
+                door.OriginalMat = m_Scene.Objects[door.ObjectIdx].ModelMat;
+            }
+        }
+        m_KeysCollected = 0;
     }
 }
 
@@ -1083,6 +1422,8 @@ void Tutorial22_HybridRendering::Update(double CurrTime, double ElapsedTime)
 {
     SampleBase::Update(CurrTime, ElapsedTime);
     UpdateUI();
+    if (m_ShowStartScreen || m_ShowControlsScreen)
+        return;
 
     if (ImGui::IsKeyReleased(ImGuiKey_F))
     {
@@ -1091,24 +1432,121 @@ void Tutorial22_HybridRendering::Update(double CurrTime, double ElapsedTime)
 
     const float dt = static_cast<float>(ElapsedTime);
 
+
+    if (m_DamageEffectTimer > 0.0f)
+    {
+        m_DamageEffectTimer -= dt;
+    }
+
     float3 PrevCameraPos = m_Camera.GetPos();
     m_Camera.Update(m_InputController, dt);
+
+    if (!m_Scene.DynamicObjects.empty())
+    {
+        auto& DynObj = m_Scene.DynamicObjects[0];
+        auto& Obj    = m_Scene.Objects[DynObj.ObjectAttribsIndex];
+
+        float3   camPos      = m_Camera.GetPos();
+        float4x4 modelMat    = Obj.ModelMat.Transpose();
+        float3   monsterPos  = float3{modelMat[3][0], modelMat[3][1], modelMat[3][2]};
+        float3   dirToCamera = normalize(camPos - monsterPos);
+
+        float distance = length(camPos - monsterPos);
+        if (distance > 1.5f)
+        {
+            monsterPos += dirToCamera * 3.0f * dt;
+            monsterPos.y = 3.0f;
+        }
+
+        Obj.ModelMat = (float4x4::Scale(1.0f, 1.0f, 1.0f) *
+                        float4x4::Translation(monsterPos))
+                           .Transpose();
+        Obj.NormalMat = float4x3{Obj.ModelMat};
+    }
+
+    // Verificar colisión con el monstruo
+    float3 playerPos  = m_Camera.GetPos();
+    float3 monsterPos = float3(m_Scene.Objects[m_Scene.DynamicObjects[0].ObjectAttribsIndex].ModelMat.Transpose().m30,
+                               m_Scene.Objects[m_Scene.DynamicObjects[0].ObjectAttribsIndex].ModelMat.Transpose().m31,
+                               m_Scene.Objects[m_Scene.DynamicObjects[0].ObjectAttribsIndex].ModelMat.Transpose().m32);
+    float  distance   = length(playerPos - monsterPos);
+
+    if (distance < 2.0f && !m_IsGameOver)
+    {
+        m_TimeSinceLastDamage += dt;
+
+        while (m_TimeSinceLastDamage >= m_DamageCooldown)
+        {
+            m_Health = std::max(0, m_Health - 25);
+            m_TimeSinceLastDamage -= m_DamageCooldown;
+
+            m_DamageEffectTimer      = 0.3f;
+            m_PostDamageOverlayAlpha = 1.0f;
+            m_PostDamageOverlayTimer = 0.0f;
+
+            if (m_Health <= 0)
+            {
+                m_IsGameOver = true;
+                break;
+            }
+        }
+    }
+    else
+    {
+        m_TimeSinceLastDamage = 0.0f;
+    }
+
+    if (m_PostDamageOverlayAlpha > 0.0f)
+    {
+        m_PostDamageOverlayTimer += dt;
+        float t                  = m_PostDamageOverlayTimer / m_PostDamageOverlayDuration;
+        m_PostDamageOverlayAlpha = std::max(0.0f, 1.0f - t);
+    }
+
+
     float3 NewCamPos = m_Camera.GetPos();
     HandleCollisions(NewCamPos, 0.5f);
+    HandleKeyCollection(NewCamPos, 0.5f);
+    if (m_ShowUnlockMsg)
+    {
+        m_UnlockMsgTimer += dt;
+        if (m_UnlockMsgTimer >= m_UnlockMsgTime)
+            m_ShowUnlockMsg = false;
+    }
+
+    TryOpenDoors();
+
+    for (auto& door : m_Doors)
+    {
+        if (!door.Rising) continue;
+
+        door.RiseTimer += dt;
+        float offsetY = door.RiseTimer * door.RiseSpeed;
+
+        // Corregir cálculo de matriz
+        float4x4 riseTrans                        = float4x4::Translation(0.0f, offsetY, 0.0f).Transpose();
+        m_Scene.Objects[door.ObjectIdx].ModelMat  = (door.OriginalMat * riseTrans);
+        m_Scene.Objects[door.ObjectIdx].NormalMat = float4x3{m_Scene.Objects[door.ObjectIdx].ModelMat};
+
+        if (offsetY > 3.0f)
+        {
+            MazeWalls[door.WallIdx]                  = {{0, 0, 0}, {0, 0, 0}};
+            m_Scene.Objects[door.ObjectIdx].ModelMat = float4x4::Scale(0, 0, 0).Transpose();
+            door.Rising                              = false;
+        }
+    }
+
     NewCamPos.y = std::max(0.1f, std::min(NewCamPos.y, 60.0f));
     m_Camera.SetPos(NewCamPos);
 
-
     // Restrict camera movement
-
     float3 Pos = m_Camera.GetPos();
 
-    // Fijar la altura (Y) de la c�mara
+    // Fijar la altura (Y) de la cámara
     Pos.y = 3.0f;
 
     const float3 MinXYZ{-100.f, 0.1f, -100.f};
     const float3 MaxXYZ{+100.f, 60.f, 100.f};
-
 
     Pos = clamp(Pos, MinXYZ, MaxXYZ);
 
@@ -1140,7 +1578,7 @@ void Tutorial22_HybridRendering::WindowResize(Uint32 Width, Uint32 Height)
 
     // Update projection matrix.
     float AspectRatio = static_cast<float>(Width) / static_cast<float>(Height);
-    m_Camera.SetProjAttribs(0.1f, 100.f, AspectRatio, PI_F / 4.f,
+    m_Camera.SetProjAttribs(0.5f, 1000.f, AspectRatio, PI_F / 4.f,
                             m_pSwapChain->GetDesc().PreTransform, m_pDevice->GetDeviceInfo().NDC.MinZ == -1);
 
     // Check if the image needs to be recreated.
@@ -1201,30 +1639,362 @@ void Tutorial22_HybridRendering::WindowResize(Uint32 Width, Uint32 Height)
 
 void Tutorial22_HybridRendering::UpdateUI()
 {
+    // Fullscreen overlay message (puertas desbloqueadas)
+    if (m_ShowUnlockMsg)
+    {
+        ImGuiViewport* vp = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(vp->Pos);
+        ImGui::SetNextWindowSize(vp->Size);
+        ImGui::SetNextWindowBgAlpha(0.0f);
+        ImGuiWindowFlags overlayFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoInputs |
+            ImGuiWindowFlags_NoBackground;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{0, 0});
+        ImGui::Begin("##FullscreenOverlay", nullptr, overlayFlags);
+        {
+            const char* msg = "Las puertas han sido desbloqueadas!";
+            ImGui::SetWindowFontScale(2.5f);
+            ImVec2 textSize = ImGui::CalcTextSize(msg);
+
+            float x = (vp->Size.x - textSize.x) * 0.5f;
+            float y = (vp->Size.y - textSize.y) * 0.5f;
+            ImGui::SetCursorPos(ImVec2{x, y});
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "%s", msg);
+            ImGui::SetWindowFontScale(1.0f);
+        }
+        ImGui::End();
+        ImGui::PopStyleVar(2);
+    }
+
+    if (m_DamageEffectTimer > 0.0f && !m_IsGameOver)
+    {
+        ImGuiViewport* vp = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(vp->Pos);
+        ImGui::SetNextWindowSize(vp->Size);
+
+        float alpha = 0.3f * (m_DamageEffectTimer / 0.3f);
+        ImGui::SetNextWindowBgAlpha(alpha);
+
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoInputs |
+            ImGuiWindowFlags_NoDecoration |
+            ImGuiWindowFlags_NoSavedSettings;
+
+        if (ImGui::Begin("DamageEffect", nullptr, flags))
+        {
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRectFilled(
+                ImVec2(vp->Pos.x, vp->Pos.y),
+                ImVec2(vp->Pos.x + vp->Size.x, vp->Pos.y + vp->Size.y),
+                IM_COL32(255, 0, 0, static_cast<int>(100 * alpha)));
+        }
+        ImGui::End();
+    }
+
+    if (m_PostDamageOverlayAlpha > 0.0f && !m_IsGameOver)
+    {
+        ImGuiViewport* vp = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(vp->Pos);
+        ImGui::SetNextWindowSize(vp->Size);
+        ImGui::SetNextWindowBgAlpha(0.0f);
+
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoInputs |
+            ImGuiWindowFlags_NoDecoration |
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoBackground;
+
+        if (ImGui::Begin("PostDamageBlurOverlay", nullptr, flags))
+        {
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRectFilled(
+                ImVec2(vp->Pos.x, vp->Pos.y),
+                ImVec2(vp->Pos.x + vp->Size.x, vp->Pos.y + vp->Size.y),
+                IM_COL32(180, 0, 0, static_cast<int>(150 * m_PostDamageOverlayAlpha)));
+        }
+        ImGui::End();
+    }
+
+    if (m_IsGameOver)
+    {
+        ImGuiViewport* vp = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(vp->Pos);
+        ImGui::SetNextWindowSize(vp->Size);
+        ImGui::SetNextWindowBgAlpha(0.85f);
+
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoScrollbar;
+
+        if (ImGui::Begin("GameOverScreen", nullptr, flags))
+        {
+            ImDrawList* draw_list   = ImGui::GetWindowDrawList();
+            ImVec2      window_pos  = ImGui::GetWindowPos();
+            ImVec2      window_size = ImGui::GetWindowSize();
+            draw_list->AddRectFilled(window_pos, ImVec2(window_pos.x + window_size.x, window_pos.y + window_size.y), IM_COL32(10, 0, 0, 200));
+
+            const char* msg = "GAME OVER";
+            ImGui::SetWindowFontScale(4.0f);
+            ImVec2 textSize = ImGui::CalcTextSize(msg);
+            ImGui::SetCursorPosX((window_size.x - textSize.x) * 0.5f);
+            ImGui::SetCursorPosY((window_size.y - textSize.y) * 0.4f);
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s", msg);
+
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 10.0f);
+            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(170, 30, 30, 200));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(200, 50, 50, 255));
+
+            const char* btnText = "REINICIAR JUEGO";
+            ImGui::SetWindowFontScale(2.0f);
+            textSize = ImGui::CalcTextSize(btnText);
+            ImGui::SetCursorPosX((window_size.x - textSize.x) * 0.5f);
+            ImGui::SetCursorPosY((window_size.y - textSize.y) * 0.6f);
+
+            if (ImGui::Button(btnText, ImVec2(textSize.x + 40.0f, textSize.y + 20.0f)))
+            {
+                m_Health            = 100;
+                m_IsGameOver        = false;
+                m_DamageEffectTimer = 0.0f;
+                m_Camera.SetPos(float3{-15.7f, 3.7f, -5.8f});
+            }
+
+            ImGui::PopStyleColor(2);
+            ImGui::PopStyleVar();
+
+            ImGui::End();
+        }
+    }
+
+    if (m_ShowStartScreen)
+    {
+        ImGuiViewport* vp = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(vp->Pos);
+        ImGui::SetNextWindowSize(vp->Size);
+        ImGui::SetNextWindowBgAlpha(0.95f);
+
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags_NoDecoration |
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoMove;
+
+        if (ImGui::Begin("StartScreen", nullptr, flags))
+        {
+            // Fondo degradado
+            ImDrawList* draw_list   = ImGui::GetWindowDrawList();
+            ImVec2      window_pos  = ImGui::GetWindowPos();
+            ImVec2      window_size = ImGui::GetWindowSize();
+            draw_list->AddRectFilledMultiColor(
+                window_pos,
+                ImVec2(window_pos.x + window_size.x, window_pos.y + window_size.y),
+                IM_COL32(12, 45, 70, 200),
+                IM_COL32(8, 30, 48, 200),
+                IM_COL32(8, 30, 48, 200),
+                IM_COL32(12, 45, 70, 200));
+
+            // Título
+            ImGui::SetWindowFontScale(3.0f);
+            ImVec2 textSize = ImGui::CalcTextSize("BIENVENIDO");
+            ImGui::SetCursorPosX((window_size.x - textSize.x) * 0.5f);
+            ImGui::SetCursorPosY(window_size.y * 0.3f);
+            ImGui::TextColored(ImColor(220, 220, 250), "BIENVENIDO");
+
+
+            ImGui::SetCursorPosY(window_size.y * 0.4f);
+            ImGui::SetCursorPosY(window_size.y * 0.45f);
+
+            // Botones
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(20, 15));
+            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(40, 80, 120, 200));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(60, 100, 140, 220));
+
+            ImGui::SetWindowFontScale(1.5f);
+            ImGui::SetCursorPosX((window_size.x - 250) * 0.5f);
+            if (ImGui::Button("VER CONTROLES", ImVec2(250, 60)))
+            {
+                m_ShowControlsScreen = true;
+                m_ShowStartScreen    = false;
+            }
+
+            ImGui::SetCursorPosX((window_size.x - 250) * 0.5f);
+            if (ImGui::Button("INICIAR JUEGO", ImVec2(250, 60)))
+            {
+                m_ShowStartScreen = false;
+            }
+
+            ImGui::PopStyleColor(2);
+            ImGui::PopStyleVar();
+        }
+        ImGui::End();
+        return;
+    }
+
+    if (m_ShowControlsScreen)
+    {
+        ImGuiViewport* vp = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(vp->Pos);
+        ImGui::SetNextWindowSize(vp->Size);
+        ImGui::SetNextWindowBgAlpha(0.95f);
+
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags_NoDecoration |
+            ImGuiWindowFlags_NoSavedSettings;
+
+        if (ImGui::Begin("ControlsScreen", nullptr, flags))
+        {
+            // Fondo
+            ImDrawList* draw_list   = ImGui::GetWindowDrawList();
+            ImVec2      window_pos  = ImGui::GetWindowPos();
+            ImVec2      window_size = ImGui::GetWindowSize();
+            draw_list->AddRectFilled(
+                window_pos,
+                ImVec2(window_pos.x + window_size.x, window_pos.y + window_size.y),
+                IM_COL32(18, 35, 45, 200));
+
+            // Título
+            ImGui::SetWindowFontScale(2.5f);
+            ImVec2 textSize = ImGui::CalcTextSize("CONTROLES");
+            ImGui::SetCursorPosX((window_size.x - textSize.x) * 0.5f);
+            ImGui::SetCursorPosY(window_size.y * 0.1f);
+            ImGui::TextColored(ImColor(180, 200, 220), "CONTROLES");
+
+            // Panel de controles
+            ImGui::SetWindowFontScale(1.2f);
+            ImGui::SetCursorPos(ImVec2(window_size.x * 0.25f, window_size.y * 0.25f));
+            if (ImGui::BeginChild("##ControlsPanel", ImVec2(window_size.x * 0.5f, window_size.y * 0.5f), true))
+            {
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 20));
+
+                ImGui::Bullet();
+                ImGui::TextColored(ImColor(100, 180, 255), "Movimiento:");
+                ImGui::Indent(20);
+                ImGui::Text("WASD - Desplazamiento");
+                ImGui::Text("Shift - Correr");
+                ImGui::Unindent(20);
+
+                ImGui::Spacing();
+
+                ImGui::Bullet();
+                ImGui::TextColored(ImColor(100, 180, 255), "Acciones:");
+                ImGui::Indent(20);
+                ImGui::Text("F - Linterna");
+                ImGui::Text("Mouse - Rotar camara");
+                ImGui::Unindent(20);
+
+                ImGui::PopStyleVar();
+            }
+            ImGui::EndChild();
+
+            ImGui::SetCursorPos(ImVec2(window_size.x * 0.3f, window_size.y * 0.85f));
+            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(60, 100, 140, 200));
+
+            if (ImGui::Button("VOLVER", ImVec2(150, 40)))
+            {
+                m_ShowControlsScreen = false;
+                m_ShowStartScreen    = true;
+            }
+
+            ImGui::SameLine(window_size.x * 0.55f);
+
+            if (ImGui::Button("JUGAR", ImVec2(150, 40)))
+            {
+                m_ShowControlsScreen = false;
+            }
+
+            ImGui::PopStyleColor();
+        }
+        ImGui::End();
+        return;
+    }
+
+    // Ventana de configuración
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Settings", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::Combo("Render mode", &m_DrawMode,
-                     "Shaded\0"
-                     "G-buffer color\0"
-                     "G-buffer normal\0"
-                     "Diffuse lighting\0"
-                     "Reflections\0"
-                     "Fresnel term\0\0");
-
-        if (ImGui::gizmo3D("##LightDirection", m_LightDir))
-        {
-            if (m_LightDir.y > -0.06f)
-            {
-                m_LightDir.y = -0.06f;
-                m_LightDir   = normalize(m_LightDir);
-            }
-        }
         ImGui::Separator();
-        ImGui::Checkbox("Flashlight (F)", &m_FlashlightEnabled);
-        ImGui::Text("Estado: %s", m_FlashlightEnabled ? "ENCENDIDA" : "APAGADA");
+
+        // VIDAS
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 3));
+
+        // Colores personalizados para la barra
+        const ImU32 bgColor     = IM_COL32(30, 60, 30, 255);
+        const ImU32 fillColor   = IM_COL32(50, 200, 50, 255);
+        const ImU32 borderColor = IM_COL32(20, 40, 20, 255);
+
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, bgColor);
+        ImGui::PushStyleColor(ImGuiCol_PlotHistogram, fillColor);
+
+        ImVec2      barSize(200, 24);
+        float       healthPercent = m_Health / 100.0f;
+        std::string healthText    = std::to_string(m_Health) + "%";
+
+        // Título de salud
+        ImGui::TextColored(ImColor(200, 255, 200), "SALUD");
+
+        // Barra de vida
+        ImGui::BeginGroup();
+        ImVec2 cursorPos = ImGui::GetCursorScreenPos();
+        ImGui::ProgressBar(healthPercent, barSize, "");
+
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRect(cursorPos, ImVec2(cursorPos.x + barSize.x, cursorPos.y + barSize.y), borderColor, 3.0f);
+
+        // Texto del porcentaje
+        ImVec2 textSize = ImGui::CalcTextSize(healthText.c_str());
+        ImVec2 textPos  = ImVec2(
+            cursorPos.x + (barSize.x - textSize.x) * 0.5f,
+            cursorPos.y + (barSize.y - textSize.y) * 0.5f);
+        draw_list->AddText(textPos, IM_COL32(255, 255, 255, 255), healthText.c_str());
+
+        ImGui::EndGroup();
+
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+
+        // Tiempo de daño
+        if (m_TimeSinceLastDamage > 0 && !m_IsGameOver)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(200, 255, 200, 255));
+            ImGui::Text("Próximo daño en: %.1fs", m_DamageCooldown - m_TimeSinceLastDamage);
+            ImGui::PopStyleColor();
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // LINTERNA
+        ImGui::BeginGroup();
+        ImGui::TextColored(ImColor(200, 255, 200), "LINTERNA");
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, 5));
+
+        const ImVec4 btnColor = m_FlashlightEnabled ?
+            ImVec4(0.2f, 0.7f, 0.2f, 0.9f) : // Verde cuando está activada
+            ImVec4(0.7f, 0.2f, 0.2f, 0.9f);  // Rojo cuando está apagada
+
+        ImGui::PushStyleColor(ImGuiCol_Button, btnColor);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(btnColor.x + 0.1f, btnColor.y + 0.1f, btnColor.z + 0.1f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(btnColor.x * 0.8f, btnColor.y * 0.8f, btnColor.z * 0.8f, 1.0f));
+
+        if (ImGui::Button(m_FlashlightEnabled ? " ACTIVADA " : " APAGADA ", ImVec2(120, 30)))
+        {
+            m_FlashlightEnabled = !m_FlashlightEnabled;
+        }
+
+        ImGui::PopStyleColor(3);
+        ImGui::PopStyleVar(2);
+
+        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(180, 220, 180, 255));
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 3);
+        ImGui::Text("(Presiona F para alternar)");
+        ImGui::PopStyleColor();
+
+        ImGui::EndGroup();
     }
     ImGui::End();
 }
-
 } // namespace Diligent
